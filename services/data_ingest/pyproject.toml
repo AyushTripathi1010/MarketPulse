@@ -1,6 +1,14 @@
 # Dependencies for the data_ingest service ONLY.
 # This service pulls market data (yFinance) and news (Alpaca), cleans/joins
-# it with PySpark, and writes Parquet to S3.
+# them with pandas + pyarrow, and writes Parquet locally or to S3.
+#
+# Why pandas instead of PySpark here?
+#   We process ~7 tickers × ~90 days = ~600 rows per refresh. pandas handles
+#   that in milliseconds with no JVM overhead. PySpark would be overkill for
+#   our scale and bloat the Lambda image past the 10GB limit.
+#   We DO use PySpark in notebooks/01_eda_market_data.ipynb for the initial
+#   historical backfill (multi-year, multi-ticker) — the right tool for that
+#   one-time, larger job. See learning/06-pandas-vs-pyspark-and-data-engineering.md.
 
 [project]
 name = "marketplus-data-ingest"
@@ -13,12 +21,14 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.4",
     "marketplus-shared",
-    # Phase 1 deps (added when we actually implement fetchers):
-    # "yfinance>=0.2.40",
-    # "alpaca-py>=0.30",
-    # "pyspark>=3.5",
-    # "boto3>=1.34",
-    # "pandas>=2.2",
+    # Phase 1 deps (now real, not commented):
+    "yfinance>=0.2.40",           # OHLCV from Yahoo Finance (unofficial but reliable)
+    "alpaca-py>=0.30",            # Alpaca News API (free tier, financial-grade)
+    "boto3>=1.34",                # AWS S3 client
+    "pandas>=2.2",                # in-memory data wrangling
+    "pyarrow>=17.0",              # Parquet format reader/writer for pandas
+    "tenacity>=8.5",              # retry with exponential backoff (industry standard)
+    "httpx>=0.27",                # used only for tests + integration probes
 ]
 
 [build-system]

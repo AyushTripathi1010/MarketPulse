@@ -6,6 +6,8 @@ pydantic-settings. Anything missing crashes the service at startup with a
 clear error — fail fast, don't surprise users at request time.
 """
 
+from __future__ import annotations
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,7 +33,27 @@ class Settings(BaseSettings):
 
     # AWS / S3 (Phase 1).
     aws_region: str = Field(default="us-east-1", alias="AWS_DEFAULT_REGION")
-    s3_bucket: str = Field(default="marketplus-local", alias="S3_BUCKET")
+    s3_bucket: str = Field(default="", alias="S3_BUCKET")
+
+    # Local development fallback: where to drop parquet files when S3 isn't
+    # configured. Created on first write.
+    local_data_dir: str = Field(default="./data/features")
+
+    @property
+    def use_s3(self) -> bool:
+        """Decide at runtime whether to write to S3 or to the local FS.
+
+        We require BOTH the bucket name AND AWS credentials to be present.
+        If you set just S3_BUCKET without AWS creds, boto3 would crash —
+        better to fail-soft to local storage and log loudly.
+        """
+        import os
+
+        has_aws_creds = bool(
+            os.environ.get("AWS_ACCESS_KEY_ID")
+            or os.environ.get("AWS_PROFILE")
+        )
+        return bool(self.s3_bucket) and has_aws_creds
 
 
 # Singleton — imported by main.py and any fetcher that needs credentials.
