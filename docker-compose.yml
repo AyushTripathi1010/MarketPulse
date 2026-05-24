@@ -1,0 +1,186 @@
+# ============================================================================
+# MarketPulse — local development orchestration.
+#
+# `docker compose up` spins up every service + Qdrant + Redis on your laptop.
+# In PRODUCTION we don't use docker-compose; each service runs on its own
+# Lambda (see infra/lambda/). Compose is strictly for local dev convenience.
+#
+# Build context is the REPO ROOT for every service so uv workspace resolution
+# works. Each service has its own Dockerfile under services/<name>/Dockerfile.
+#
+# IMPORTANT — before the first `docker compose up`, build the shared base:
+#   docker build -f infra/docker/python-base.Dockerfile -t marketplus/python-base:0.1 .
+# This is a one-time setup; subsequent service builds are fast because they
+# all FROM the same cached base.
+# ============================================================================
+
+services:
+
+  # --------------------------------------------------------------------------
+  # The seven MarketPulse services. Each FastAPI app listens on internal port
+  # 8000; we map them to distinct host ports 8001-8007 so curl works.
+  # --------------------------------------------------------------------------
+
+  data_ingest:
+    build:
+      context: .
+      dockerfile: services/data_ingest/Dockerfile
+    ports:
+      - "8001:8000"
+    env_file: .env
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  forecast:
+    build:
+      context: .
+      dockerfile: services/forecast/Dockerfile
+    ports:
+      - "8002:8000"
+    env_file: .env
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  critic:
+    build:
+      context: .
+      dockerfile: services/critic/Dockerfile
+    ports:
+      - "8003:8000"
+    env_file: .env
+    depends_on:
+      qdrant:
+        condition: service_started
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  report:
+    build:
+      context: .
+      dockerfile: services/report/Dockerfile
+    ports:
+      - "8004:8000"
+    env_file: .env
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+    ports:
+      - "8005:8000"
+    env_file: .env
+    depends_on:
+      data_ingest:
+        condition: service_healthy
+      forecast:
+        condition: service_healthy
+      critic:
+        condition: service_healthy
+      report:
+        condition: service_healthy
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  backtest:
+    build:
+      context: .
+      dockerfile: services/backtest/Dockerfile
+    ports:
+      - "8006:8000"
+    env_file: .env
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  api_gateway:
+    build:
+      context: .
+      dockerfile: services/api_gateway/Dockerfile
+    ports:
+      - "8007:8000"
+    env_file: .env
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      backtest:
+        condition: service_healthy
+    networks: [marketpulse]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # --------------------------------------------------------------------------
+  # Infrastructure dependencies (Phase 5+ when we actually wire them up, but
+  # we start them now so we don't have to think about it later).
+  # --------------------------------------------------------------------------
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    ports:
+      - "6333:6333"     # REST API
+      - "6334:6334"     # gRPC (faster, what qdrant-client uses)
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks: [marketpulse]
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks: [marketpulse]
+    # We only ACTUALLY use Redis if Groq rate-limit becomes binding. Until
+    # then it's running but idle — basically free.
+    command: redis-server --appendonly yes
+
+  # Langfuse is intentionally COMMENTED OUT for Phase 0. It needs Postgres +
+  # ClickHouse + a heavyish stack. We'll bring it in during Phase 3 when the
+  # orchestrator starts making LLM calls worth tracing.
+  #
+  # See infra/langfuse/docker-compose.langfuse.yml — uncomment + `include:` here when ready.
+
+networks:
+  marketpulse:
+    driver: bridge
+
+volumes:
+  qdrant_data:
+  redis_data:

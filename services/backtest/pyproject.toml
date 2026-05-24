@@ -1,0 +1,32 @@
+# Dependencies for the backtest service ONLY.
+# This service replays historical data through the agentic pipeline and
+# computes performance metrics (Sharpe, max drawdown, hit rate).
+
+[project]
+name = "marketplus-backtest"
+version = "0.1.0"
+description = "Walk-forward backtester for MarketPulse predictions"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "marketplus-shared",
+    # Phase 6 deps:
+    # "pandas>=2.2",
+    # "numpy>=2.0",
+    # "boto3>=1.34",
+    # "httpx>=0.27",
+    # "matplotlib>=3.9",      # for equity-curve plots
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/backtest"]
+
+[tool.uv.sources]
+marketplus-shared = { workspace = true }

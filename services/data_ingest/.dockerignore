@@ -1,0 +1,19 @@
+# Don't send any of these to the Docker daemon during build (faster builds,
+# smaller images). Note this is relative to the repo root because that's our
+# build context.
+**/.git
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/node_modules
+**/.next
+data/
+models/
+mlruns/
+learning/
+docs/
+.claude/
+notebooks/
+frontend/

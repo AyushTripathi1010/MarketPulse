@@ -1,0 +1,96 @@
+# ============================================================================
+# MarketPulse — .gitignore
+# This file lists everything git should PRETEND DOESN'T EXIST.
+# Think of it as the bouncer outside the git club: the names on this list
+# never get past the velvet rope into a commit.
+# ============================================================================
+
+# --- The most important lines in this file ---------------------------------
+# learning/ — my private "teach-me-this-tech" notes. Interview prep, not
+# production. Never goes on a public repo.
+learning/
+
+# .claude/ — local planning / scratch notes for this project's master plan.
+# Stays on my disk; never pushed.
+.claude/
+
+# docs/ — my personal command journal + scratch design notes. Private.
+# (If I ever write a public-facing architecture.md or ADR I'll un-ignore it
+# selectively with `!docs/architecture.md` etc.)
+docs/
+
+# --- Secrets ----------------------------------------------------------------
+# .env files hold API keys (Alpaca, Groq, HuggingFace, AWS). Leaking these
+# into git is a career-ending mistake. If you ever accidentally commit a
+# secret, ROTATE it on the provider — don't just delete the file.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# --- uv ---------------------------------------------------------------------
+# uv.lock IS committed (so everyone gets reproducible installs)
+# but caches and downloaded wheels are not
+.uv-cache/
+
+# --- Tests / coverage -------------------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- Notebooks --------------------------------------------------------------
+# Strip outputs before committing notebooks — outputs balloon repo size
+# and often contain secrets in cells we forgot to clear.
+.ipynb_checkpoints/
+
+# --- Data / models / artifacts ---------------------------------------------
+# Everything large enough to need DVC/S3 instead of git.
+data/
+*.parquet
+*.csv
+models/
+checkpoints/
+mlruns/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# --- Docker -----------------------------------------------------------------
+# nothing to ignore for docker itself, but compose may write these
+.docker/
+
+# --- Frontend (Next.js) ----------------------------------------------------
+node_modules/
+.next/
+out/
+.vercel/
+
+# --- IDE / OS ---------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Local logs -------------------------------------------------------------
+*.log
+logs/

@@ -1,0 +1,89 @@
+# ============================================================================
+# MarketPulse — root pyproject.toml
+#
+# This is the ROOT of a uv WORKSPACE. It does not declare any code itself —
+# its job is to declare which folders are workspace members and to centralize
+# tool configs (ruff, mypy, pytest) so every service inherits the same rules.
+#
+# When you run `uv sync` at this level, uv resolves ALL services' dependencies
+# together into ONE lockfile (uv.lock at the repo root) — guaranteeing version
+# coherence across services. But when Docker builds one service, it only
+# installs that service's slice of the lockfile.
+#
+# Why this layout? See learning/02-uv-vs-venv-and-toml.md (workspaces section).
+# ============================================================================
+
+[project]
+name = "marketplus"
+version = "0.1.0"
+description = "Self-evolving stock & crypto intelligence agent — monorepo root"
+requires-python = ">=3.12"
+# The root has no runtime dependencies of its own — services declare theirs.
+dependencies = []
+
+[tool.uv.workspace]
+# Every folder listed here gets its own pyproject.toml and is independently
+# installable, but shares this one lockfile (uv.lock at repo root).
+members = [
+    "shared",
+    "services/data_ingest",
+    "services/forecast",
+    "services/critic",
+    "services/report",
+    "services/orchestrator",
+    "services/backtest",
+    "services/api_gateway",
+]
+
+[dependency-groups]
+# Dev-only tools shared by every service. Install with `uv sync --group dev`.
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",       # for testing FastAPI endpoints
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+# ----------------------------------------------------------------------------
+# Tool configs — every service inherits these because they're at the root.
+# This is the modern Python convention: one file, every tool reads from it.
+# ----------------------------------------------------------------------------
+
+[tool.ruff]
+# Line length 100 is the modern compromise (PEP 8 says 79, but that's 1980s-era).
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# A pragmatic set of rules — not too strict, not too lax.
+select = [
+    "E", "W",   # pycodestyle errors and warnings
+    "F",        # pyflakes (unused imports, undefined names)
+    "I",        # isort (import sorting)
+    "B",        # bugbear (common bugs)
+    "UP",       # pyupgrade (modernize syntax)
+    "N",        # pep8-naming
+]
+ignore = ["E501"]  # line too long is enforced by formatter, not linter
+
+[tool.ruff.format]
+# Use double quotes everywhere; matches the Black convention.
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Pydantic V2 has a mypy plugin that understands BaseModel field types.
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+# Find tests anywhere under services/*/tests and shared/tests
+testpaths = ["services", "shared"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers --import-mode=importlib"
+asyncio_mode = "auto"
+# --import-mode=importlib lets us have `test_health.py` under EVERY service's
+# tests/ folder without name-collision errors. The default `prepend` mode
+# imports them all as the bare module `test_health` and collides; importlib
+# uses fully-qualified paths instead.
