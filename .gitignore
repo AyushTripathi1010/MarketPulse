@@ -63,15 +63,20 @@ htmlcov/
 
 # --- Data / models / artifacts ---------------------------------------------
 # Everything large enough to need DVC/S3 instead of git.
-data/
+# IMPORTANT: leading slash makes these root-only — otherwise `data/` would
+# match the Python package `services/forecast/src/forecast/data/` too.
+/data/
 *.parquet
 *.csv
-models/
-checkpoints/
-mlruns/
+/models/
+/checkpoints/
+/mlruns/
+/lightning_logs/        # Lightning Trainer dumps hparams.yaml + version_N/ here
+/wandb/
 *.pt
 *.pth
 *.bin
+*.ckpt
 *.safetensors
 
 # --- Docker -----------------------------------------------------------------

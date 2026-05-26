@@ -87,3 +87,6 @@ asyncio_mode = "auto"
 # tests/ folder without name-collision errors. The default `prepend` mode
 # imports them all as the bare module `test_health` and collides; importlib
 # uses fully-qualified paths instead.
+markers = [
+    "slow: marks tests that take more than ~5s (training, real model runs). Skip in fast CI via -m 'not slow'.",
+]

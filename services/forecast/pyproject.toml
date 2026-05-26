@@ -1,10 +1,20 @@
 # Dependencies for the forecast service ONLY.
-# This service trains and serves the Temporal Fusion Transformer.
+# This service trains and serves the Temporal Fusion Transformer (TFT) — the
+# 2020 paper architecture that remains the 2026 standard for interpretable
+# multi-horizon time-series forecasting on real-world data.
+#
+# Why this stack (and not bare PyTorch from scratch)?
+#   pytorch-forecasting provides a battle-tested TFT implementation, a
+#   TimeSeriesDataSet abstraction that handles all the sliding-window /
+#   masking footguns, and quantile-loss heads out of the box. Reimplementing
+#   gets you ~6 weeks of subtle bugs for no learning benefit. We DO own the
+#   training loop, MLflow logging, and serving — the parts where senior
+#   engineering judgment shows up.
 
 [project]
 name = "marketplus-forecast"
 version = "0.1.0"
-description = "TFT-based time-series forecasting service"
+description = "Temporal Fusion Transformer training + serving service"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
@@ -13,11 +23,14 @@ dependencies = [
     "pydantic-settings>=2.4",
     "marketplus-shared",
     # Phase 2 deps:
-    # "torch>=2.3",
-    # "lightning>=2.3",
-    # "pytorch-forecasting>=1.0",
-    # "mlflow>=2.14",
-    # "pandas>=2.2",
+    "torch>=2.3",                  # neural net runtime; mps/cuda backends
+    "lightning>=2.3",              # training loop abstraction; checkpointing
+    "pytorch-forecasting>=1.0",    # battle-tested TFT + TimeSeriesDataSet
+    "mlflow>=2.14",                # experiment tracking + model registry
+    "pandas>=2.2",                 # feature frame ingestion
+    "pyarrow>=17.0",               # Parquet reader (same engine as data_ingest)
+    "numpy>=2.0",                  # numerics
+    "boto3>=1.34",                 # load checkpoints from S3 in production
 ]
 
 [build-system]

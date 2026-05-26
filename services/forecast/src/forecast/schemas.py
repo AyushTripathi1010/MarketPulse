@@ -1,5 +1,7 @@
 """Pydantic request/response schemas for the forecast service."""
 
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 from marketplus_shared.models import Forecast

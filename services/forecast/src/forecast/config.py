@@ -1,4 +1,6 @@
-"""Configuration for the forecast service. See data_ingest/config.py for the pattern."""
+"""Configuration for the forecast service."""
+
+from __future__ import annotations
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,12 +13,23 @@ class Settings(BaseSettings):
 
     environment: str = "local"
 
-    # S3 path to the latest TFT checkpoint (Phase 2 will populate this).
-    s3_bucket: str = Field(default="marketplus-local", alias="S3_BUCKET")
-    tft_checkpoint_key: str = Field(default="models/tft/latest.ckpt")
+    # Where to read input features written by data_ingest. Same default
+    # as data_ingest.config so a single docker-compose run shares the dir.
+    local_data_dir: str = Field(default="./data/features")
 
-    # MLflow tracking — DagsHub-hosted (free 10GB).
+    # Where the latest trained checkpoint lives on disk.
+    # Production loads from S3; dev loads from this local path.
+    local_checkpoint_path: str = Field(default="./data/models/tft-best.ckpt")
+    local_dataset_path: str = Field(default="./data/models/train_ds.pkl")
+
+    # S3 (Phase 7 will populate these for prod inference).
+    s3_bucket: str = Field(default="", alias="S3_BUCKET")
+    tft_checkpoint_key: str = Field(default="models/tft/latest.ckpt")
+    aws_region: str = Field(default="us-east-1", alias="AWS_DEFAULT_REGION")
+
+    # MLflow tracking — DagsHub-hosted in prod, file:./mlruns in dev/tests.
     mlflow_tracking_uri: str = Field(default="", alias="MLFLOW_TRACKING_URI")
+    mlflow_experiment: str = Field(default="marketplus-tft")
 
 
 settings = Settings()
