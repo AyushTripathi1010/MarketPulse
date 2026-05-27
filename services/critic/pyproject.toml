@@ -1,6 +1,7 @@
 # Dependencies for the critic service ONLY.
-# This service runs the fine-tuned Phi-3 regime classifier, hybrid RAG
-# (Qdrant + BM25 + reranker), and the Groq LLM judgment call.
+# Phase 3: stub Critique with optional Groq-powered regime/confidence call.
+# Phase 4 will add the fine-tuned Phi-3 regime classifier.
+# Phase 5 will add hybrid RAG (Qdrant + BM25 + reranker).
 
 [project]
 name = "marketplus-critic"
@@ -13,13 +14,15 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.4",
     "marketplus-shared",
-    # Phase 4+5 deps:
+    # Phase 3 deps:
+    "groq>=0.9",                   # fast LLM API (free tier 30 RPM)
+    "tenacity>=8.5",               # retry on transient API failures
+    # Phase 4+5 deps (added when fine-tune lands):
     # "transformers>=4.45",
     # "torch>=2.3",
     # "qdrant-client>=1.10",
     # "rank-bm25>=0.2",
     # "sentence-transformers>=3.0",
-    # "groq>=0.9",
 ]
 
 [build-system]

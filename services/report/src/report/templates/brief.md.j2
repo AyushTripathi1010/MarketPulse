@@ -1,0 +1,41 @@
+{# Markdown template for the intelligence brief.
+   Jinja2 syntax. Keep this DETERMINISTIC — every value comes from the
+   Forecast + Critique. The (optional) LLM polishing pass operates on the
+   rendered output. #}
+# {{ forecast.ticker }} Intelligence Brief
+
+**Generated:** {{ generated_at.strftime("%Y-%m-%d %H:%M UTC") }}
+
+## Forecast
+
+- **Horizon:** {{ forecast.horizon_hours }} hour{% if forecast.horizon_hours != 1 %}s{% endif %} ahead
+- **Predicted price:** ${{ "%.2f"|format(forecast.predicted_price) }}
+- **80% confidence band:** ${{ "%.2f"|format(forecast.confidence_low) }} – ${{ "%.2f"|format(forecast.confidence_high) }}
+- **Band width:** ${{ "%.2f"|format(forecast.confidence_high - forecast.confidence_low) }} ({{ "%.1f"|format((forecast.confidence_high - forecast.confidence_low) / forecast.predicted_price * 100) }}% of point estimate)
+
+## Critic Assessment
+
+- **Market regime:** **{{ critique.regime.label.value | upper }}** (regime confidence {{ "%.0f"|format(critique.regime.confidence * 100) }}%)
+- **Forecast confidence:** **{{ critique.confidence }}**
+
+### Reasoning
+
+> {{ critique.reasoning }}
+{% if critique.analogues %}
+### Historical analogues
+
+The Critic identified the following similar past setups:
+
+{% for analogue in critique.analogues %}
+- **{{ analogue.ticker }} on {{ analogue.occurred_at.strftime("%Y-%m-%d") }}** ({{ analogue.regime_then.value }}) → 24h return: {{ "%+.2f%%"|format(analogue.outcome_24h_return * 100) }}
+  > _{{ analogue.news_summary }}_
+{% endfor %}
+{% else %}
+### Historical analogues
+
+_None retrieved (hybrid RAG layer activates in Phase 5)._
+{% endif %}
+
+---
+
+_This is a research output, not investment advice. MarketPulse is a decision-support system; trading decisions remain with the human or downstream automation._

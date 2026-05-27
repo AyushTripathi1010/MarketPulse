@@ -1,5 +1,7 @@
 """Configuration for the critic service."""
 
+from __future__ import annotations
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,11 +17,11 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.3-70b-versatile")
 
-    # Hugging Face for the Phi-3 regime classifier.
+    # Hugging Face for the Phi-3 regime classifier (Phase 4).
     hf_token: str = Field(default="", alias="HF_TOKEN")
     phi3_model_id: str = Field(default="marketplus/phi3-regime-classifier")
 
-    # Qdrant for semantic retrieval of historical analogues.
+    # Qdrant for semantic retrieval of historical analogues (Phase 5).
     qdrant_url: str = Field(default="http://localhost:6333", alias="QDRANT_URL")
 
 

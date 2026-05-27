@@ -1,5 +1,6 @@
 # Dependencies for the report service ONLY.
-# This service composes the final markdown intelligence brief using Groq.
+# Phase 3: real /generate endpoint using a Jinja template, with an optional
+# Groq pass that polishes the prose into something an analyst would read.
 
 [project]
 name = "marketplus-report"
@@ -13,9 +14,10 @@ dependencies = [
     "pydantic-settings>=2.4",
     "marketplus-shared",
     # Phase 3 deps:
-    # "groq>=0.9",
-    # "jinja2>=3.1",
-    # "boto3>=1.34",
+    "groq>=0.9",                   # optional polishing pass; LLM rewrite
+    "jinja2>=3.1",                 # template renderer (deterministic body)
+    "tenacity>=8.5",               # retry on transient Groq errors
+    # Phase 7 (Lambda) adds boto3 for S3-write.
 ]
 
 [build-system]

@@ -1,5 +1,8 @@
 # Dependencies for the orchestrator service ONLY.
-# This service owns the LangGraph state machine that drives the full pipeline.
+# This is the BRAIN of MarketPulse — it owns the LangGraph state machine
+# that walks every prediction through Data → Forecast → Critic → Report →
+# Drift-check. Each node makes an HTTP call to the corresponding internal
+# service. Langfuse traces every LLM step.
 
 [project]
 name = "marketplus-orchestrator"
@@ -14,9 +17,9 @@ dependencies = [
     "httpx>=0.27",
     "marketplus-shared",
     # Phase 3 deps:
-    # "langgraph>=0.2",
-    # "langchain-core>=0.3",
-    # "langfuse>=2.40",
+    "langgraph>=0.2",              # state-machine library for agentic flows
+    "langchain-core>=0.3",         # types (TypedDict helpers, Runnable)
+    "langfuse>=2.40",              # LLM observability — traces every node
 ]
 
 [build-system]
