@@ -17,9 +17,10 @@ dependencies = [
     # Phase 3 deps:
     "groq>=0.9",                   # fast LLM API (free tier 30 RPM)
     "tenacity>=8.5",               # retry on transient API failures
-    # Phase 4+5 deps (added when fine-tune lands):
-    # "transformers>=4.45",
-    # "torch>=2.3",
+    # Phase 4 dep: HF Inference API client (no torch/transformers needed at
+    # runtime — heavy ML stays on Colab; inference is one HTTP call).
+    "huggingface-hub>=0.25",
+    # Phase 5 deps (added when hybrid RAG lands):
     # "qdrant-client>=1.10",
     # "rank-bm25>=0.2",
     # "sentence-transformers>=3.0",

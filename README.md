@@ -160,11 +160,11 @@ This is built **incrementally over 8–10 weeks**, one phase per checkpoint. Com
 | Phase | Focus | Status |
 |---|---|---|
 | 0 | Monorepo scaffolding (7 FastAPI services + Docker + tests) | ✅ done |
-| 1 | Data layer (yFinance + Alpaca + pandas transforms + Parquet) | ✅ done — **37 tests passing** |
-| 2 | TFT forecast model + MLflow tracking | ⏳ next |
-| 3 | LangGraph orchestrator + Langfuse tracing | ⏳ |
-| 4 | Phi-3 QLoRA fine-tune for regime classification | ⏳ |
-| 5 | Hybrid RAG (Qdrant + BM25 + reranker) for the Critic agent | ⏳ |
+| 1 | Data layer (yFinance + Alpaca + pandas transforms + Parquet) | ✅ done |
+| 2 | TFT forecast model + MLflow tracking | ✅ done |
+| 3 | LangGraph orchestrator + Langfuse tracing | ✅ done |
+| 4 | Phi-3 QLoRA fine-tune for regime classification | ✅ done — **93 tests passing** |
+| 5 | Hybrid RAG (Qdrant + BM25 + reranker) for the Critic agent | ⏳ next |
 | 6 | Walk-forward backtesting module | ⏳ |
 | 7 | AWS Lambda + EventBridge deployment | ⏳ |
 | 8 | Next.js 15 dashboard on Vercel | ⏳ |

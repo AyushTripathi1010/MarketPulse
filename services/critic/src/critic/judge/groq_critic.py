@@ -48,7 +48,7 @@ Forecast:
 - Horizon: {horizon_hours} hours
 - Predicted price: {predicted_price:.2f}
 - 80% confidence band: [{confidence_low:.2f}, {confidence_high:.2f}]
-
+{regime_block}
 Recent news headlines (last 24h):
 {news_block}
 
@@ -92,16 +92,36 @@ def _parse_response(raw: str) -> dict[str, Any]:
     retry=retry_if_exception_type((CriticLLMError, ConnectionError, TimeoutError)),
     reraise=True,
 )
+def _build_regime_block(regime_hint: Regime | None) -> str:
+    """Format the optional Phi-3 regime hint as a prompt block.
+
+    Phase 4 adds this — the classifier's label and confidence get fed into
+    the judge's context. Phase 3 callers pass None and we emit an empty
+    block, preserving the original prompt shape.
+    """
+    if regime_hint is None:
+        return ""
+    return (
+        f"\nRegime classifier (fine-tuned Phi-3-mini):\n"
+        f"- Label: {regime_hint.label.value}\n"
+        f"- Classifier confidence: {regime_hint.confidence:.0%}\n"
+    )
+
+
 def judge(
     forecast: Forecast,
     recent_news: list[str],
     *,
     api_key: str,
     model: str = "llama-3.3-70b-versatile",
+    regime_hint: Regime | None = None,
 ) -> Critique:
     """Call Groq to grade the forecast. Returns the shared Critique model.
 
-    Phase 3 stubs the analogues list as empty — Phase 5 RAG will fill it.
+    Phase 4 passes the Phi-3 classifier's regime as `regime_hint`. The judge
+    LLM sees it as additional context but can override (the LLM may say
+    "bull" even when the classifier says "sideways" if the LLM's evidence
+    is stronger). The classifier's job is to ground the LLM, not bind it.
     """
     prompt = PROMPT_TEMPLATE.format(
         ticker=forecast.ticker,
@@ -109,6 +129,7 @@ def judge(
         predicted_price=forecast.predicted_price,
         confidence_low=forecast.confidence_low,
         confidence_high=forecast.confidence_high,
+        regime_block=_build_regime_block(regime_hint),
         news_block=_build_news_block(recent_news),
     )
 
