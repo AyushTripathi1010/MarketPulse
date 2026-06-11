@@ -20,10 +20,12 @@ dependencies = [
     # Phase 4 dep: HF Inference API client (no torch/transformers needed at
     # runtime — heavy ML stays on Colab; inference is one HTTP call).
     "huggingface-hub>=0.25",
-    # Phase 5 deps (added when hybrid RAG lands):
-    # "qdrant-client>=1.10",
-    # "rank-bm25>=0.2",
-    # "sentence-transformers>=3.0",
+    # Phase 5 deps — hybrid RAG (semantic + lexical + fusion):
+    "qdrant-client>=1.11",         # vector DB client (supports in-memory mode for tests)
+    "rank-bm25>=0.2",              # pure-Python BM25 lexical scorer (lightweight, no torch)
+    # NOTE: we deliberately do NOT pull sentence-transformers/torch into the
+    # critic container. Embedding + reranking go through HF Inference API
+    # so the runtime stays Lambda-friendly. Heavy ML stays in notebooks.
 ]
 
 [build-system]

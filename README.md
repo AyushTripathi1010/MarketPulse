@@ -163,9 +163,9 @@ This is built **incrementally over 8–10 weeks**, one phase per checkpoint. Com
 | 1 | Data layer (yFinance + Alpaca + pandas transforms + Parquet) | ✅ done |
 | 2 | TFT forecast model + MLflow tracking | ✅ done |
 | 3 | LangGraph orchestrator + Langfuse tracing | ✅ done |
-| 4 | Phi-3 QLoRA fine-tune for regime classification | ✅ done — **93 tests passing** |
-| 5 | Hybrid RAG (Qdrant + BM25 + reranker) for the Critic agent | ⏳ next |
-| 6 | Walk-forward backtesting module | ⏳ |
+| 4 | Phi-3 QLoRA fine-tune for regime classification | ✅ done |
+| 5 | Hybrid RAG (Qdrant + BM25 + RRF + reranker) for the Critic agent | ✅ done — **134 tests passing** |
+| 6 | Walk-forward backtesting module | ⏳ next |
 | 7 | AWS Lambda + EventBridge deployment | ⏳ |
 | 8 | Next.js 15 dashboard on Vercel | ⏳ |
 | 9 | GitHub Actions CI/CD | ⏳ |

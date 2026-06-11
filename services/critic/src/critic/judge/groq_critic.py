@@ -25,6 +25,7 @@ from groq import Groq
 from marketplus_shared.models import (
     Critique,
     Forecast,
+    HistoricalAnalogue,
     Regime,
     RegimeLabel,
 )
@@ -49,6 +50,7 @@ Forecast:
 - Predicted price: {predicted_price:.2f}
 - 80% confidence band: [{confidence_low:.2f}, {confidence_high:.2f}]
 {regime_block}
+{analogues_block}
 Recent news headlines (last 24h):
 {news_block}
 
@@ -86,12 +88,6 @@ def _parse_response(raw: str) -> dict[str, Any]:
         raise CriticLLMError(f"Critic LLM returned non-JSON: {raw[:200]}") from e
 
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=2, min=2, max=10),
-    retry=retry_if_exception_type((CriticLLMError, ConnectionError, TimeoutError)),
-    reraise=True,
-)
 def _build_regime_block(regime_hint: Regime | None) -> str:
     """Format the optional Phi-3 regime hint as a prompt block.
 
@@ -108,6 +104,37 @@ def _build_regime_block(regime_hint: Regime | None) -> str:
     )
 
 
+def _build_analogues_block(analogues: list[HistoricalAnalogue]) -> str:
+    """Format the optional retrieved analogues as a prompt block.
+
+    Phase 5 adds this — hybrid RAG returns the 3 most similar historical
+    setups and we feed them in so the judge can reason about what tended
+    to happen next in comparable conditions.
+
+    Format: bulleted list, one analogue per line, with the outcome and
+    a short news summary. We DON'T include the embedding text — that
+    would just bloat the prompt with text the model already saw via
+    the news_summary field.
+    """
+    if not analogues:
+        return ""
+
+    lines = ["\nHistorical analogues (retrieved by hybrid RAG):"]
+    for a in analogues:
+        lines.append(
+            f"- {a.ticker} on {a.occurred_at.date()} (regime: {a.regime_then.value}) → "
+            f"24h outcome: {a.outcome_24h_return:+.2%}. "
+            f"News: {a.news_summary}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=2, min=2, max=10),
+    retry=retry_if_exception_type((CriticLLMError, ConnectionError, TimeoutError)),
+    reraise=True,
+)
 def judge(
     forecast: Forecast,
     recent_news: list[str],
@@ -115,13 +142,16 @@ def judge(
     api_key: str,
     model: str = "llama-3.3-70b-versatile",
     regime_hint: Regime | None = None,
+    analogues: list[HistoricalAnalogue] | None = None,
 ) -> Critique:
     """Call Groq to grade the forecast. Returns the shared Critique model.
 
-    Phase 4 passes the Phi-3 classifier's regime as `regime_hint`. The judge
-    LLM sees it as additional context but can override (the LLM may say
-    "bull" even when the classifier says "sideways" if the LLM's evidence
-    is stronger). The classifier's job is to ground the LLM, not bind it.
+    Phase 4 passes the Phi-3 classifier's regime as `regime_hint`.
+    Phase 5 passes retrieved historical analogues. Both are OPTIONAL — when
+    None/empty, the corresponding prompt block is empty and the model
+    judges on what it has. This is what makes the critic robust against
+    partial outages: the classifier or the retriever or both can be down
+    and the judgment still completes (with appropriately tagged confidence).
     """
     prompt = PROMPT_TEMPLATE.format(
         ticker=forecast.ticker,
@@ -130,6 +160,7 @@ def judge(
         confidence_low=forecast.confidence_low,
         confidence_high=forecast.confidence_high,
         regime_block=_build_regime_block(regime_hint),
+        analogues_block=_build_analogues_block(analogues or []),
         news_block=_build_news_block(recent_news),
     )
 
