@@ -1,0 +1,171 @@
+# ============================================================================
+# AWS SAM template for the MarketPulse orchestrator Lambda + EventBridge cron.
+#
+# This template deploys TWO Lambda functions sharing ONE container image:
+#   - OrchestratorCronFn   → triggered by EventBridge hourly schedule
+#   - OrchestratorApiFn    → fronted by an API Gateway HTTP API for manual /run
+#
+# Both run the same code; SAM gives them different CMD overrides + different
+# IAM roles + different concurrency settings.
+#
+# To deploy:
+#   cd <repo root>
+#   sam build --use-container
+#   sam deploy --guided
+#
+# First-time `sam deploy --guided` writes an samconfig.toml so subsequent
+# deploys are just `sam deploy`. See infra/lambda/README.md.
+# ============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: MarketPulse orchestrator — Lambda + EventBridge hourly cron.
+
+# --- Inputs the user/CI tweaks per environment ------------------------------
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: prod
+    Description: Used to tag resources and pick env-specific config.
+
+  ReportsBucketName:
+    Type: String
+    Description: |
+      S3 bucket the cron writes intelligence briefs to. Must be globally
+      unique. Pre-existing buckets supported; we Ref it rather than create.
+
+  DataIngestUrl:
+    Type: String
+    Description: Public URL of the data_ingest Lambda (or its API Gateway).
+
+  ForecastUrl:
+    Type: String
+    Description: Public URL of the forecast Lambda.
+
+  CriticUrl:
+    Type: String
+    Description: Public URL of the critic Lambda.
+
+  ReportUrl:
+    Type: String
+    Description: Public URL of the report Lambda.
+
+  GroqApiKey:
+    Type: String
+    NoEcho: true   # mask in CloudFormation console
+    Default: ""
+
+  LangfuseHost:
+    Type: String
+    Default: ""
+
+  LangfusePublicKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+
+  LangfuseSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+
+  SupportedTickers:
+    Type: CommaDelimitedList
+    Default: "AAPL,MSFT,NVDA,GOOGL,TSLA,BTC-USD,ETH-USD"
+
+  CronSchedule:
+    Type: String
+    Default: "cron(0 * * * ? *)"  # every hour on the hour
+    Description: |
+      EventBridge cron expression. The default fires hourly. To save free-tier
+      Lambda budget during development, set this to a daily schedule like
+      "cron(0 14 * * ? *)" (14:00 UTC daily).
+
+# --- Globals applied to all functions ---------------------------------------
+Globals:
+  Function:
+    Runtime: provided.al2023  # ignored when PackageType: Image, but explicit
+    Architectures:
+      - arm64                  # Graviton — ~20% cheaper than x86, same speed
+    Timeout: 60               # seconds; cron run takes ~20s for 7 tickers
+    MemorySize: 1024          # MB; LangGraph + httpx fits easily in 1 GB
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref EnvironmentName
+        # Service URLs — orchestrator nodes call these via httpx.
+        DATA_INGEST_URL: !Ref DataIngestUrl
+        FORECAST_URL: !Ref ForecastUrl
+        CRITIC_URL: !Ref CriticUrl
+        REPORT_URL: !Ref ReportUrl
+        # Secrets — never log these. NoEcho on the parameter masks them
+        # in CloudFormation but Lambda env vars are visible in the console.
+        # In a real prod setup these should come from AWS Secrets Manager.
+        GROQ_API_KEY: !Ref GroqApiKey
+        LANGFUSE_HOST: !Ref LangfuseHost
+        LANGFUSE_PUBLIC_KEY: !Ref LangfusePublicKey
+        LANGFUSE_SECRET_KEY: !Ref LangfuseSecretKey
+        S3_BUCKET: !Ref ReportsBucketName
+        SUPPORTED_TICKERS: !Join [",", !Ref SupportedTickers]
+
+Resources:
+  # ------------------------------------------------------------------------
+  # Cron Lambda — invoked by EventBridge on schedule.
+  # ------------------------------------------------------------------------
+  OrchestratorCronFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "marketplus-orchestrator-cron-${EnvironmentName}"
+      PackageType: Image
+      ImageConfig:
+        # Overrides the Dockerfile's CMD. Format is the Lambda invoke
+        # target: <module>.<callable>.
+        Command:
+          - handler.cron_handler
+      Policies:
+        # Write reports to the configured S3 bucket; do NOT grant full S3
+        # access — least privilege.
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucketName
+      Events:
+        HourlyTick:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref CronSchedule
+            Description: Hourly invocation that fans out across all supported tickers.
+            Enabled: true
+    Metadata:
+      DockerTag: cron-latest
+      DockerContext: ../..        # build from repo root so the Dockerfile sees workspace files
+      Dockerfile: infra/lambda/Dockerfile
+
+  # ------------------------------------------------------------------------
+  # API Lambda — same code, exposed via API Gateway HTTP API for manual /run.
+  # ------------------------------------------------------------------------
+  OrchestratorApiFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "marketplus-orchestrator-api-${EnvironmentName}"
+      PackageType: Image
+      ImageConfig:
+        Command:
+          - handler.api_handler
+      Events:
+        HttpApi:
+          Type: HttpApi
+          Properties:
+            Method: ANY
+            Path: /{proxy+}
+    Metadata:
+      DockerTag: api-latest
+      DockerContext: ../..
+      Dockerfile: infra/lambda/Dockerfile
+
+# --- Outputs the user can grab after deploy ---------------------------------
+Outputs:
+  CronFunctionName:
+    Description: Name of the cron Lambda (use with `aws lambda invoke`)
+    Value: !Ref OrchestratorCronFn
+
+  ApiEndpoint:
+    Description: Public URL of the orchestrator API Gateway.
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"

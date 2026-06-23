@@ -20,6 +20,9 @@ dependencies = [
     "langgraph>=0.2",              # state-machine library for agentic flows
     "langchain-core>=0.3",         # types (TypedDict helpers, Runnable)
     "langfuse>=2.40",              # LLM observability — traces every node
+    # Phase 7 deps — Lambda + S3 writeback:
+    "mangum>=0.17",                # ASGI<->Lambda event adapter
+    "boto3>=1.34",                 # write reports to S3 from the cron handler
 ]
 
 [build-system]

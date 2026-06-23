@@ -79,7 +79,7 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 # Find tests anywhere under services/*/tests and shared/tests
-testpaths = ["services", "shared"]
+testpaths = ["services", "shared", "tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers --import-mode=importlib"
 asyncio_mode = "auto"
